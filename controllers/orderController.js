@@ -1,5 +1,6 @@
 import order from "../models/order.js";
 import Course from "../models/course.js";
+import Enrollment from "../models/enrollment.js"; // ← NEW
 
 
 //CREATE ORDER
@@ -110,7 +111,7 @@ export async function getOrders(req, res){
     }
 }
 
- 
+
 
 //UPDATE ORDER STATUS
 export async function updateOrderStatus(req, res) {
@@ -134,6 +135,26 @@ export async function updateOrderStatus(req, res) {
         notes: notes 
       } 
     );
+
+    // ── Order "Completed" වෙද්දී Enrollments Create කරනවා ──
+    if (status === "Completed") {
+      const completedOrder = await order.findOne({ orderId: orderId });
+
+      for (const item of completedOrder.items) {
+        const alreadyEnrolled = await Enrollment.findOne({
+          userId: completedOrder.email,
+          courseId: item.courseId,
+        });
+
+        if (!alreadyEnrolled) {
+          await Enrollment.create({
+            userId: completedOrder.email,
+            courseId: item.courseId,
+          });
+        }
+      }
+    }
+    // ── End Enrollment Block ──
 
     res.status(200).json({
       message: "Order status updated successfully",
